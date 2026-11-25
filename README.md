@@ -33,6 +33,16 @@ Automated EEG and SEEG pipelines often return opaque event tables detached from 
 
 ---
 
+## Two Ways to Use BrainLens
+
+| | **BrainLens** (this repository) | **BrainLens Desktop** |
+| --- | --- | --- |
+| Agent | Your own agent over MCP: **Claude Code**, **Codex**, **Cursor** or **Antigravity** | Built into the app; add a model API key in its settings |
+| Runs as | Python package with a local browser workbench and the `brainlens-mcp` server | Electron desktop app |
+| Best for | Co-reviewing a case with the agent you already use, through to MDT case sheets and slides | A standalone review app with the agent inside |
+| Engine | PyHFO 4 (optional `brainlens[pyhfo]` extra) | PyHFO 4, bundled |
+| Get it | [Quick Start](#quick-start-claude-code--codex--cursor--antigravity) below | [roychowdhuryresearch/BrainLens-Desktop](https://github.com/roychowdhuryresearch/BrainLens-Desktop) |
+
 ## Quick Start (Claude Code / Codex / Cursor / Antigravity)
 
 BrainLens is **vendor-neutral** by design: one canonical Open Agent Skill ([`skills/brainlens/SKILL.md`](skills/brainlens/SKILL.md)) + one standard stdio MCP server (`brainlens-mcp`) that works identically across **Claude Code**, **Codex**, **Cursor**, **Antigravity**, and any other MCP-compatible agent.
