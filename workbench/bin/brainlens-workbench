@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+
+PY_RUNTIME=""
+if [[ -n "${BRAINLENS_PYTHON:-}" ]]; then
+  if [[ ! -x "${BRAINLENS_PYTHON}" ]]; then
+    printf 'Error: BRAINLENS_PYTHON is set to %s, which is not an executable file.\n' "${BRAINLENS_PYTHON}" >&2
+    exit 1
+  fi
+  PY_RUNTIME="${BRAINLENS_PYTHON}"
+elif [[ -n "${BTK_PYTHON:-}" ]]; then
+  if [[ ! -x "${BTK_PYTHON}" ]]; then
+    printf 'Error: BTK_PYTHON is set to %s, which is not an executable file.\n' "${BTK_PYTHON}" >&2
+    exit 1
+  fi
+  PY_RUNTIME="${BTK_PYTHON}"
+elif [[ -x "${PROJECT_ROOT}/.venv/bin/python3" ]]; then
+  PY_RUNTIME="${PROJECT_ROOT}/.venv/bin/python3"
+elif [[ -x "${PROJECT_ROOT}/.venv/bin/python" ]]; then
+  PY_RUNTIME="${PROJECT_ROOT}/.venv/bin/python"
+else
+  if ! PY_RUNTIME="$(command -v python3)"; then
+    printf 'Error: No Python 3.11-3.13 interpreter found.\n' >&2
+    printf 'Create "%s/.venv" or set BRAINLENS_PYTHON=/path/to/venv/bin/python3.\n' "${PROJECT_ROOT}" >&2
+    exit 1
+  fi
+fi
+
+export PYTHONPATH="${PROJECT_ROOT}/workbench/src${PYTHONPATH:+:${PYTHONPATH}}"
+export BRAINLENS_WORKSPACE="${BRAINLENS_WORKSPACE:-${BRAINTOOLKIT_WORKSPACE:-${PROJECT_ROOT}/workbench_results}}"
+
+if ! "${PY_RUNTIME}" - <<'PY'; then
+import importlib.util
+import sys
+
+if sys.version_info < (3, 11) or sys.version_info >= (3, 14):
+    ver = ".".join(str(x) for x in sys.version_info[:3])
+    sys.stderr.write(f"Error: BrainLens requires Python 3.11-3.13, but {sys.executable} is Python {ver}.\n")
+    sys.exit(1)
+
+required = ("brainlens", "anyio", "edfio", "filelock", "matplotlib", "mcp", "mne", "numpy", "pydantic", "scipy")
+missing = [m for m in required if importlib.util.find_spec(m) is None]
+if missing:
+    sys.stderr.write(
+        f"Error: Python interpreter {sys.executable} cannot import required BrainLens dependencies "
+        f"(missing: {', '.join(missing)}).\n"
+    )
+    sys.exit(1)
+PY
+  printf 'Install dependencies with: python3.12 -m venv "%s/.venv" && "%s/.venv/bin/pip" install "%s/workbench"\n' \
+    "${PROJECT_ROOT}" "${PROJECT_ROOT}" "${PROJECT_ROOT}" >&2
+  printf 'Or point BRAINLENS_PYTHON to an environment with BrainLens dependencies installed.\n' >&2
+  exit 1
+fi
+
+exec "${PY_RUNTIME}" -m brainlens.cli workbench "$@"

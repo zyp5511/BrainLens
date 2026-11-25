@@ -1,0 +1,60 @@
+# Git & local agent/editor files
+.git
+.gitignore
+.gitattributes
+.DS_Store
+Thumbs.db
+.claude/
+.codex/
+.zcode/
+.agents/
+.mcp.json
+AGENTS.md
+
+# Local virtual environments & Python caches
+.venv/
+.venv-*/
+venv/
+env/
+.releases/
+.deployment-checkpoints/
+**/__pycache__/
+**/*.py[cod]
+**/*$py.class
+**/*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Build & offline bundle outputs
+build/
+dist/
+
+# Local workspaces & historical outputs
+results/
+workbench_results/
+HUP134_conference_brief.html
+
+# Raw recording binaries & large local templates
+inputs/*.edf
+inputs/**/*.edf
+inputs/*.bdf
+inputs/**/*.bdf
+inputs/*.eeg
+inputs/**/*.eeg
+inputs/*.fif
+inputs/**/*.fif
+inputs/*.fif.gz
+inputs/**/*.fif.gz
+inputs/HUP134/provenance/
+templates/
+*.zip
+
+# Non-runtime repo directories
+docs/
+scripts/
+skills/
+workbench/tests/*.py
+
+# Strip git metadata if PyHFO was cloned into docker/vendor/pyhfo
+docker/vendor/**/.git

@@ -1,0 +1,121 @@
+{
+  "source": "https://raw.githubusercontent.com/OpenNeuroDatasets/ds003498/950e1dbfe4a065975c15a6742bb0576464f7c93b/sub-01/ses-interictalsleep/ieeg/sub-01_ses-interictalsleep_run-01_events.tsv",
+  "derivation": "Unique bipolar channel names in published HFO events ('<type>_<electrode><a>-<b>' -> anode <electrode><a>, cathode <electrode><b>); no other pairing inferred.",
+  "pairs": [
+    {
+      "anode": "AHR1",
+      "cathode": "AHR2",
+      "name": "AHR1-2"
+    },
+    {
+      "anode": "AHR2",
+      "cathode": "AHR3",
+      "name": "AHR2-3"
+    },
+    {
+      "anode": "AHR3",
+      "cathode": "AHR4",
+      "name": "AHR3-4"
+    },
+    {
+      "anode": "AL1",
+      "cathode": "AL2",
+      "name": "AL1-2"
+    },
+    {
+      "anode": "AL2",
+      "cathode": "AL3",
+      "name": "AL2-3"
+    },
+    {
+      "anode": "AL3",
+      "cathode": "AL4",
+      "name": "AL3-4"
+    },
+    {
+      "anode": "AR1",
+      "cathode": "AR2",
+      "name": "AR1-2"
+    },
+    {
+      "anode": "AR2",
+      "cathode": "AR3",
+      "name": "AR2-3"
+    },
+    {
+      "anode": "AR3",
+      "cathode": "AR4",
+      "name": "AR3-4"
+    },
+    {
+      "anode": "HL1",
+      "cathode": "HL2",
+      "name": "HL1-2"
+    },
+    {
+      "anode": "HL2",
+      "cathode": "HL3",
+      "name": "HL2-3"
+    },
+    {
+      "anode": "HL3",
+      "cathode": "HL4",
+      "name": "HL3-4"
+    },
+    {
+      "anode": "IAR1",
+      "cathode": "IAR2",
+      "name": "IAR1-2"
+    },
+    {
+      "anode": "IAR2",
+      "cathode": "IAR3",
+      "name": "IAR2-3"
+    },
+    {
+      "anode": "IAR3",
+      "cathode": "IAR4",
+      "name": "IAR3-4"
+    },
+    {
+      "anode": "IAR4",
+      "cathode": "IAR5",
+      "name": "IAR4-5"
+    },
+    {
+      "anode": "IAR5",
+      "cathode": "IAR6",
+      "name": "IAR5-6"
+    },
+    {
+      "anode": "IPR1",
+      "cathode": "IPR2",
+      "name": "IPR1-2"
+    },
+    {
+      "anode": "IPR2",
+      "cathode": "IPR3",
+      "name": "IPR2-3"
+    },
+    {
+      "anode": "IPR3",
+      "cathode": "IPR4",
+      "name": "IPR3-4"
+    },
+    {
+      "anode": "PHR1",
+      "cathode": "PHR2",
+      "name": "PHR1-2"
+    },
+    {
+      "anode": "PHR2",
+      "cathode": "PHR3",
+      "name": "PHR2-3"
+    },
+    {
+      "anode": "PHR3",
+      "cathode": "PHR4",
+      "name": "PHR3-4"
+    }
+  ]
+}

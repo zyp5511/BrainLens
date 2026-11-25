@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title data-i18n="BrainLens — Clinical &amp; Research Neurophysiology Workbench">BrainLens — Clinical & Research Neurophysiology Workbench</title>
+  <script>
+    (function () {
+      try {
+        var p = new URLSearchParams(window.location.search);
+        var t = p.get("theme") || localStorage.getItem("brainlens_theme") || localStorage.getItem("btk_theme");
+        if (t === "dark") document.documentElement.setAttribute("data-theme", "dark");
+        var v = p.get("view");
+        if (localStorage.getItem("brainlens_review_blinded") === "1" && v === "sheet") v = "reader";
+        if (v === "reader" || v === "sheet" || v === "overview") {
+          document.documentElement.setAttribute("data-init-view", v);
+        }
+      } catch (_) {}
+    })();
+  </script>
+  <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="bar-left">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 12 6 12 9 4 13 20 16 10 19 12 22 12"/></svg>
+        </div>
+        <span class="logo">BrainLens</span>
+      </div>
+
+      <div class="context-cluster">
+        <select id="caseSelect" title="Active Patient / Dataset Case" data-i18n-title="Active Patient / Dataset Case"></select>
+        <span class="ctx-sep">/</span>
+        <div id="recPills" class="rec-pills"></div>
+        <span class="ctx-sep">/</span>
+        <select id="runSelect" title="Active Analysis Run or Sensitivity Branch" data-i18n-title="Active Analysis Run or Sensitivity Branch"></select>
+      </div>
+
+      <button id="openCaseBtn" class="btn btn-sm btn-ghost" title="Open another recording or BIDS folder" data-i18n-title="Open another recording or BIDS folder">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
+        <span data-i18n="Open">Open</span>
+      </button>
+      <button id="newBranchBtn" class="btn btn-sm btn-accent" title="Create a sensitivity branch (exclude intervals, change detector, or enable ONNX)" data-i18n-title="Create a sensitivity branch (exclude intervals, change detector, or enable ONNX)" data-i18n="Branch">
+        Branch
+      </button>
+    </div>
+
+    <nav class="view-nav" id="viewNav">
+      <button class="view-tab active" data-view="overview">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+        <span data-i18n="Overview">Overview</span>
+      </button>
+      <button class="view-tab" data-view="reader">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2 12 6 12 9 5 13 19 16 10 19 12 22 12"/></svg>
+        <span data-i18n="Waveform Reader">Waveform Reader</span>
+      </button>
+      <button class="view-tab" data-view="sheet">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3.6 9h16.8M3.6 15h16.8M11.5 3a17 17 0 0 0 0 18M12.5 3a17 17 0 0 1 0 18"/></svg>
+        <span data-i18n="3D &amp; Report">3D &amp; Report</span>
+      </button>
+    </nav>
+
+    <div class="bar-right">
+      <span id="provBadge" class="prov-pill">—</span>
+      <span id="agentSyncBadge" class="sync-pill" title="Synchronized with Claude / Codex / Antigravity MCP" data-i18n-title="Synchronized with Claude / Codex / Antigravity MCP">
+        <span class="sync-led"></span> <span data-i18n="Linked">Linked</span>
+      </span>
+      <button id="languageBtn" type="button" class="btn btn-sm btn-ghost" title="Switch language" aria-label="Switch language" data-i18n-title="Switch language" data-i18n-aria-label="Switch language"><span lang="en">EN</span> / <span lang="zh-CN">中文</span></button>
+      <button id="themeBtn" class="btn btn-sm btn-ghost btn-icon" title="Switch Clinical Daylight / Obsidian Reading Room" data-i18n-title="Switch Clinical Daylight / Obsidian Reading Room">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="viewport">
+    <!-- VIEW 1: CASE TRIAGE OVERVIEW -->
+    <section id="view-overview" class="view-pane active">
+      <div class="overview-scroll">
+        <div id="caseHeroBanner" class="case-hero"></div>
+        <div id="synchronyAlert" class="alert-banner hidden"></div>
+
+        <div id="kpiGrid" class="kpi-grid"></div>
+
+        <details id="admissionPanel" class="card long-panel" hidden>
+          <summary class="card-title" data-i18n="Admission timeline">Admission timeline</summary>
+          <div id="admissionStatus" class="hint" role="status"></div>
+          <div id="admissionFiles"></div>
+          <div id="admissionGaps"></div>
+          <div class="long-toolbar">
+            <label><span data-i18n="Search markers">Search markers</span> <input id="admissionSearch" type="search" placeholder="Filter marker text" data-i18n-placeholder="Filter marker text" /></label>
+            <span id="admissionEventCount" class="mono-meta"></span>
+          </div>
+          <div id="admissionAskAgent" class="ask-agent" data-source="admission_timeline" hidden></div>
+          <div id="admissionEvents" class="admission-events"></div>
+          <button type="button" id="moreMarkers" class="btn btn-xs" data-i18n="More markers">More markers</button>
+        </details>
+
+        <details id="trendPanel" class="card long-panel" hidden>
+          <summary class="card-title" data-i18n="Trends">Trends</summary>
+          <p class="hint" data-i18n="Quantitative trends for signal navigation.">Quantitative trends for signal navigation.</p>
+          <div class="long-toolbar">
+            <label><span data-i18n="Measure">Measure</span> <select id="trendMeasure">
+              <option value="delta" data-i18n="Delta 1–4 Hz">Delta 1–4 Hz</option>
+              <option value="theta" data-i18n="Theta 4–8 Hz">Theta 4–8 Hz</option>
+              <option value="alpha" data-i18n="Alpha 8–13 Hz">Alpha 8–13 Hz</option>
+              <option value="beta" data-i18n="Beta 13–30 Hz">Beta 13–30 Hz</option>
+              <option value="gamma" data-i18n="Gamma 30–80 Hz">Gamma 30–80 Hz</option>
+              <option value="ripple" data-i18n="Ripple 80–250 Hz">Ripple 80–250 Hz</option>
+              <option value="fast_ripple" data-i18n="Fast ripple 250–500 Hz">Fast ripple 250–500 Hz</option>
+              <option value="line_length" data-i18n="Line length">Line length</option>
+              <option value="rms" data-i18n="RMS amplitude">RMS amplitude</option>
+              <option value="hfo_rate" data-i18n="HFO detections / min">HFO detections / min</option>
+            </select></label>
+            <label><span data-i18n="Epoch (s)">Epoch (s)</span> <input type="number" id="trendEpoch" value="10" min="2" max="60" step="any" required /></label>
+            <button type="button" id="loadTrends" class="btn btn-xs" data-i18n="Show trends">Show trends</button>
+          </div>
+          <div id="trendStatus" role="status" class="hint"></div>
+          <div id="trendPlot" hidden>
+            <p class="hint" data-i18n="Click to inspect a channel and time. Drag across time to select an analysis segment.">Click to inspect a channel and time. Drag across time to select an analysis segment.</p>
+            <div id="trendAxis" class="trend-axis"></div>
+            <div id="trendViewport" class="trend-viewport">
+              <div id="trendRows"><canvas id="trendHeatmap" tabindex="0" aria-label="Trend heatmap. Arrow keys select a channel and epoch. Enter opens the reader." data-i18n-aria-label="Trend heatmap. Arrow keys select a channel and epoch. Enter opens the reader."></canvas></div>
+            </div>
+            <div class="trend-legend">
+              <span id="trendScale"></span>
+              <span class="legend-gap"><span data-i18n="Gap">Gap</span></span><span class="legend-marker"><span data-i18n="Marker">Marker</span></span>
+              <span class="legend-file"><span data-i18n="File boundary">File boundary</span></span><span class="legend-missing"><span data-i18n="Unavailable">Unavailable</span></span>
+              <output id="trendReadout"></output>
+            </div>
+          </div>
+          <fieldset class="segment-controls"><legend id="segmentHeading" data-i18n="Analysis segments">Analysis segments</legend>
+            <form id="segmentForm" class="long-toolbar">
+              <label><span data-i18n="Start (s)">Start (s)</span> <input type="number" id="segmentStart" value="" min="0" step="any" required /></label>
+              <label><span data-i18n="End (s)">End (s)</span> <input type="number" id="segmentEnd" value="" min="0" step="any" required /></label>
+              <label><span data-i18n="Segment label">Segment label</span> <input id="segmentLabel" type="text" maxlength="120" /></label>
+              <button type="submit" id="addSegment" class="btn btn-xs" data-i18n="Add segment">Add segment</button>
+            </form>
+            <form id="markerSegmentForm" class="long-toolbar">
+              <label><span data-i18n="Marker pattern (regex)">Marker pattern (regex)</span> <input id="segmentPattern" type="text" required /></label>
+              <label><span data-i18n="Before (s)">Before (s)</span> <input type="number" id="segmentBefore" value="10" min="0" step="any" required /></label> <label><span data-i18n="After (s)">After (s)</span> <input type="number" id="segmentAfter" value="10" min="0" step="any" required /></label>
+              <button type="submit" id="addMarkerSegments" class="btn btn-xs" data-i18n="Add from markers">Add from markers</button>
+            </form>
+            <ol id="segmentList"></ol><p id="segmentStatus" role="status" class="hint"></p>
+            <button type="button" id="analyzeSegments" class="btn btn-xs btn-accent" data-i18n="Analyze segments">Analyze segments</button>
+          </fieldset>
+        </details>
+
+        <div class="card timeline-card">
+          <div class="card-head">
+            <div>
+              <span class="card-title" data-i18n="Event Synchrony &amp; Signal Quality Timeline">Event Synchrony &amp; Signal Quality Timeline</span>
+              <span class="hint" data-i18n="Emerald = focal (&lt;5 shafts) · Coral = multi-shaft sync bursts (≥5 shafts) · Lower strip = assessed-channel QC · Click to jump to waveforms">Emerald = focal (&lt;5 shafts) · Coral = multi-shaft sync bursts (&ge;5 shafts) · Lower strip = assessed-channel QC · Click to jump to waveforms</span>
+            </div>
+            <span id="timelineMeta" class="mono-meta"></span>
+          </div>
+          <canvas id="overviewTimelineCanvas" height="100"></canvas>
+        </div>
+
+        <div class="overview-tables-grid">
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <span id="activeTableTitle" class="card-title" data-i18n="Active Candidate Channels">Active Candidate Channels</span>
+                <span class="hint" data-i18n="0-event channels omitted · Click row to inspect">0-event channels omitted · Click row to inspect</span>
+              </div>
+              <div class="seg-toggle">
+                <button id="metricFocalBtn" class="active" data-i18n="Focal (&lt;5 shafts)">Focal (&lt;5 shafts)</button>
+                <button id="metricRawBtn" data-i18n="All Raw">All Raw</button>
+              </div>
+            </div>
+            <div id="activeChannelsTableWrap"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <span class="card-title" data-i18n="Sensitivity &amp; Branch Comparison">Sensitivity &amp; Branch Comparison</span>
+                <span class="hint" data-i18n="Symmetric union or cross-ref L7 side-by-side">Symmetric union or cross-ref L7 side-by-side</span>
+              </div>
+              <div class="row-inline">
+                <select id="ovCmpRunA"></select>
+                <span class="hint" style="margin:0" data-i18n="vs">vs</span>
+                <select id="ovCmpRunB"></select>
+              </div>
+            </div>
+            <div id="branchTableWrap"></div>
+          </div>
+        </div>
+
+        <details id="agreementPanel" class="card">
+          <summary class="card-title" data-i18n="Inter-rater agreement">Inter-rater agreement</summary>
+          <div class="agreement-controls">
+            <label><span data-i18n="Events">Events</span> <select id="agreementSetSelect"><option value="" data-i18n="All events in run">All events in run</option></select></label>
+            <label><span data-i18n="Readers">Readers</span> <input id="agreementReaders" placeholder="All human readers, or IDs separated by commas" data-i18n-placeholder="All human readers, or IDs separated by commas" /></label>
+            <button type="button" id="agreementRefreshBtn" class="btn btn-xs" data-i18n="Calculate">Calculate</button>
+          </div>
+          <div id="agreementResults" aria-live="polite"></div>
+        </details>
+        <section id="evidencePanel" class="card" aria-labelledby="evidenceTitle" hidden>
+          <div class="card-head">
+            <h2 id="evidenceTitle" class="card-title" data-i18n="Evidence map">Evidence map</h2>
+            <div class="row-inline evidence-actions">
+              <button type="button" id="loadEvidenceMap" class="btn btn-xs" data-i18n="Show evidence map">Show evidence map</button>
+              <label><span data-i18n="Seizure onset (s)">Seizure onset (s)</span>
+                <input type="number" id="eiOnsetSeconds" min="0" step="any" placeholder="Use marker" data-i18n-placeholder="Use marker" />
+              </label>
+              <button type="button" id="loadEpileptogenicity" class="btn btn-xs" data-i18n="Show ictal EI">Show ictal EI</button>
+            </div>
+          </div>
+          <p id="evidenceStatus" class="hint" role="status"></p>
+          <div id="evidenceResult"></div>
+        </section>
+
+        <div class="overview-bottom-grid">
+          <div class="card">
+            <div class="card-head">
+              <span class="card-title" data-i18n="Signal QC, Reference &amp; Classifier Diagnostics">Signal QC, Reference &amp; Classifier Diagnostics</span>
+              <button id="openCohortBtn" class="btn btn-xs" data-i18n="Cohort Batch Runner">Cohort Batch Runner</button>
+            </div>
+            <div id="overviewDiagnosticsBox"></div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <span class="card-title" data-i18n="Provenance &amp; Scope Guardrails">Provenance &amp; Scope Guardrails</span>
+              <button id="jumpToSheetBtn" class="btn btn-xs" data-i18n="Open MDT Report →">Open MDT Report →</button>
+            </div>
+            <div id="overviewProvenanceBox"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 2: SYNCHRONIZED WAVEFORM & EVENT READER -->
+    <section id="view-reader" class="view-pane">
+      <div class="reader-layout">
+        <aside class="reader-sidebar">
+          <div class="side-block">
+            <div class="row-between" style="gap:6px">
+              <span class="side-title" style="white-space:nowrap" data-i18n="Channel groups">Channel groups</span>
+              <div class="row-inline" style="gap:5px;min-width:0">
+                <button id="multiShaftBtn" class="btn btn-xs btn-ghost multi-pill-btn" title="Combine multiple electrode shafts (or ⌘/Ctrl+Click any shaft)" data-i18n-title="Combine multiple electrode shafts (or ⌘/Ctrl+Click any shaft)" data-i18n="+ Multi">+ Multi</button>
+                <span id="pageLabel" class="mono-meta" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></span>
+              </div>
+            </div>
+            <div id="shaftPills" class="shaft-pills"></div>
+          </div>
+
+          <div class="side-block queue-header">
+            <div class="row-between">
+              <span class="side-title"><span data-i18n="Evidence Queue">Evidence Queue</span> <span id="queueCount" class="mono-meta">(0)</span></span>
+              <label class="chk-mini"><input id="filterChOnlyChk" type="checkbox" /> <span data-i18n="Focus ch">Focus ch</span></label>
+            </div>
+            <div class="queue-tabs" id="queueTabs">
+              <button class="active" data-qmode="focal" title="Focal/local candidates (<5 simultaneous shafts)" data-i18n-title="Focal/local candidates (&lt;5 simultaneous shafts)" data-i18n="Focal">Focal</button>
+              <button data-qmode="ehfo_fr" title="ONNX eHFO, Spike-HFO, or Fast-Ripple (250-450 Hz) dominant focal events" data-i18n-title="ONNX eHFO, Spike-HFO, or Fast-Ripple (250-450 Hz) dominant focal events" data-i18n="eHFO / FR">eHFO / FR</button>
+              <button data-qmode="controls" title="Candidate-free quiet background windows" data-i18n-title="Candidate-free quiet background windows" data-i18n="Quiet Ctrl">Quiet Ctrl</button>
+              <button data-qmode="bursts" title="Multi-shaft synchronous bursts (>=5 shafts)" data-i18n-title="Multi-shaft synchronous bursts (&gt;=5 shafts)" data-i18n="Sync Bursts">Sync Bursts</button>
+              <button data-qmode="all" title="All detector candidates" data-i18n-title="All detector candidates" data-i18n="All">All</button>
+              <button data-qmode="confirmed" title="Confirmed or clipped for case sheet" data-i18n-title="Confirmed or clipped for case sheet" data-i18n="★ Clipped">★ Clipped</button>
+              <button data-qmode="review_set" title="Frozen events in reader-specific order" data-i18n-title="Frozen events in reader-specific order" data-i18n="Review set">Review set</button>
+            </div>
+            <div class="row-between">
+              <label class="chk-mini" title="Show only this reader’s judgments. Agreement and case sheets are hidden." data-i18n-title="Show only this reader’s judgments. Agreement and case sheets are hidden."><input id="blindedToggle" type="checkbox" /> <span data-i18n="Blinded">Blinded</span></label>
+              <span id="reviewSetProgress" class="mono-meta" aria-live="polite"></span>
+            </div>
+            <div id="reviewSetControls" class="hidden">
+              <select id="reviewSetSelect" aria-label="Review set" class="full-w" data-i18n-aria-label="Review set"></select>
+              <details class="review-set-create">
+                <summary data-i18n="Create review set">Create review set</summary>
+                <form id="reviewSetForm">
+                  <label><span data-i18n="Name">Name</span> <input name="name" required maxlength="80" /></label>
+                  <label><span data-i18n="Events">Events</span> <input name="sample_size" type="number" min="1" placeholder="All events" data-i18n-placeholder="All events" /></label>
+                  <label><span data-i18n="Seed">Seed</span> <input name="seed" type="number" step="1" value="0" /></label>
+                  <button class="btn btn-xs" type="submit" data-i18n="Create">Create</button>
+                </form>
+              </details>
+            </div>
+            <div class="row-between" id="queueSortControls">
+              <span class="hint" style="margin:0" data-i18n="Sort">Sort</span>
+              <select id="queueSortSelect" style="flex:1">
+                <option value="time" data-i18n="Recording Time">Recording Time</option>
+                <option value="ehfo" data-i18n="eHFO probability ↓">eHFO probability ↓</option>
+                <option value="freq" data-i18n="Peak Freq / FR ↓">Peak Freq / FR ↓</option>
+                <option value="amplitude" data-i18n="Peak-to-Peak µV ↓">Peak-to-Peak µV ↓</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="queueList" class="queue-list"></div>
+          <div id="readerAskAgent" class="ask-agent" data-source="waveform_reader" hidden></div>
+        </aside>
+
+        <div class="reader-main">
+          <!-- Multi-Channel Toolbar -->
+          <div class="reader-toolbar">
+            <div class="tool-group">
+              <button id="toggleSidebarBtn" class="btn btn-xs btn-ghost" title="Collapse/expand Electrode Shafts &amp; Evidence Queue sidebar" data-i18n-title="Collapse/expand Electrode Shafts &amp; Evidence Queue sidebar">◧</button>
+              <button id="toggleTriadBtn" class="btn btn-xs btn-ghost" title="Expand EEG full-height / toggle Triad dock [Key: F]" data-i18n-title="Expand EEG full-height / toggle Triad dock [Key: F]">⬓</button>
+              <span class="ctx-sep">|</span>
+              <button id="btnStart" class="btn btn-xs btn-ghost" title="Jump to start" data-i18n-title="Jump to start">|◀</button>
+              <button id="btnPrevPage" class="btn btn-xs btn-ghost" title="Previous page [A]" data-i18n-title="Previous page [A]">◀</button>
+              <input id="readerStartInput" type="number" step="0.5" min="0" value="0" title="Start time (seconds)" data-i18n-title="Start time (seconds)" />
+              <span class="mono-meta">s</span>
+              <button id="btnNextPage" class="btn btn-xs btn-ghost" title="Next page [D]" data-i18n-title="Next page [D]">▶</button>
+              <select id="readerDurSelect" title="Time window (or ⌘/Ctrl + Wheel to zoom)" data-i18n-title="Time window (or ⌘/Ctrl + Wheel to zoom)">
+                <option value="0.5">0.5 s</option>
+                <option value="1">1 s</option>
+                <option value="2">2 s</option>
+                <option value="4">4 s</option>
+                <option value="5">5 s</option>
+                <option value="8" selected>8 s</option>
+                <option value="10">10 s</option>
+                <option value="15">15 s</option>
+                <option value="30">30 s</option>
+              </select>
+            </div>
+
+            <div class="tool-mode-seg" id="mcToolModes" role="group" aria-label="Waveform Interaction Mode" data-i18n-aria-label="Waveform Interaction Mode">
+              <button type="button" class="active" data-tool="pan" title="Drag left/right to pan time · Click event or trace to inspect [Key: V]" data-i18n-title="Drag left/right to pan time · Click event or trace to inspect [Key: V]" data-i18n="Pan">Pan</button>
+              <button type="button" data-tool="measure" title="Drag across any channel to measure Δt (ms), frequency (Hz), and display-trace peak-to-peak µV [Key: M]" data-i18n-title="Drag across any channel to measure Δt (ms), frequency (Hz), and display-trace peak-to-peak µV [Key: M]" data-i18n="Measure">Measure</button>
+              <button type="button" data-tool="exclude" title="Drag interval to exclude artifact segment or clip to Case Sheet [Key: X or Shift+Drag]" data-i18n-title="Drag interval to exclude artifact segment or clip to Case Sheet [Key: X or Shift+Drag]" data-i18n="Exclude">Exclude</button>
+            </div>
+
+            <div class="tool-group">
+              <span id="sourceNavigation" hidden>
+                <button id="returnToRun" class="btn btn-xs" type="button" data-i18n="Acquired signal · return to run montage">Acquired signal · return to run montage</button>
+              </span>
+              <select id="montageSelect" title="Display Montage" data-i18n-title="Display Montage">
+                <option value="acquired" data-i18n="Acquired">Acquired</option>
+                <option value="adjacent_bipolar" data-i18n="Adj. Bipolar">Adj. Bipolar</option>
+              </select>
+              <span class="ctx-sep">|</span>
+              <select id="dispFilterSelect" title="Display Bandpass Filter" data-i18n-title="Display Bandpass Filter">
+                <option value="broadband" data-i18n="Broadband">Broadband</option>
+                <option value="eeg_1_70">1–70 Hz</option>
+                <option value="ripple_80_250">80–250 Hz</option>
+                <option value="fast_ripple_250_450" data-i18n="250–450 FR">250–450 FR</option>
+                <option value="custom" disabled data-i18n="Custom">Custom</option>
+              </select>
+              <span class="ctx-sep">|</span>
+              <label class="chk-mini" style="padding:0 3px" title="Zero-phase display notch filter (saved pipeline counts unchanged)" data-i18n-title="Zero-phase display notch filter (saved pipeline counts unchanged)">
+                <input id="displayNotchChk" type="checkbox" /> <span id="notchLbl" data-i18n="Notch 60 Hz">Notch 60 Hz</span>
+              </label>
+              <span class="ctx-sep">|</span>
+              <button id="gainDownBtn" class="btn btn-xs btn-ghost" title="Decrease vertical amplitude gain [-]" data-i18n-title="Decrease vertical amplitude gain [-]">−</button>
+              <select id="readerGainSelect" title="Vertical Amplitude Gain (full-viewport excursion · Alt + Wheel or +/-)" data-i18n-title="Vertical Amplitude Gain (full-viewport excursion · Alt + Wheel or +/-)">
+                <option value="0.25">0.25×</option>
+                <option value="0.5">0.5×</option>
+                <option value="1" selected>1×</option>
+                <option value="2">2×</option>
+                <option value="4">4×</option>
+                <option value="8">8×</option>
+                <option value="16">16×</option>
+              </select>
+              <button id="gainUpBtn" class="btn btn-xs btn-ghost" title="Increase vertical amplitude gain [+]" data-i18n-title="Increase vertical amplitude gain [+]">+</button>
+              <span class="ctx-sep">|</span>
+              <select id="rowHeightSelect" title="Channel Row Height &amp; Vertical Scroll (Shift+Alt+Wheel or ↑/↓)" data-i18n-title="Channel Row Height &amp; Vertical Scroll (Shift+Alt+Wheel or ↑/↓)">
+                <option value="fit" selected data-i18n="↕ Fit">↕ Fit</option>
+                <option value="28">↕ 28px</option>
+                <option value="40">↕ 40px</option>
+                <option value="56">↕ 56px</option>
+                <option value="80">↕ 80px</option>
+              </select>
+              <button id="unhideAllBtn" class="btn btn-xs hidden" title="Restore hidden channels" data-i18n-title="Restore hidden channels" data-i18n="Unhide">Unhide</button>
+            </div>
+          </div>
+
+          <div class="reader-settings" aria-label="Reader display settings" role="group" data-i18n-aria-label="Reader display settings">
+            <label><span data-i18n="Sensitivity">Sensitivity</span> <select id="readerSensitivitySelect">
+              <option value="auto" data-i18n="Auto">Auto</option>
+            </select></label>
+            <button type="button" id="calibrateScreenBtn" class="btn btn-xs" data-i18n="Calibrate screen">Calibrate screen</button>
+            <label><span data-i18n="Timebase">Timebase</span> <select id="readerTimebaseSelect">
+              <option value="fit" data-i18n="Fit">Fit</option>
+              <option value="15">15 mm/s</option><option value="30">30 mm/s</option><option value="60">60 mm/s</option>
+            </select></label>
+            <label><span data-i18n="Page step">Page step</span> <select id="readerPageStep">
+              <option value="0.85" data-i18n="85% (15% overlap)">85% (15% overlap)</option><option value="1" data-i18n="Full page">Full page</option>
+            </select></label>
+            <label><span data-i18n="LFF">LFF</span> <input id="displayLff" type="number" min="0" step="any" placeholder="Off" title="Low-frequency filter (Hz)" data-i18n-title="Low-frequency filter (Hz)" data-i18n-placeholder="Off" /> Hz</label>
+            <label><span data-i18n="HFF">HFF</span> <input id="displayHff" type="number" min="0" step="any" placeholder="Off" title="High-frequency filter (Hz)" data-i18n-title="High-frequency filter (Hz)" data-i18n-placeholder="Off" /> Hz</label>
+            <button type="button" id="readerShortcutBtn" class="btn btn-xs" aria-label="Reader shortcuts" title="Reader shortcuts" data-i18n-title="Reader shortcuts" data-i18n-aria-label="Reader shortcuts">?</button>
+          </div>
+          <div class="reader-status">
+            <span id="readerTimebaseReadout"></span><span id="readerFilterReadout"></span>
+            <span id="montageNotice" class="hidden" role="status"></span>
+          </div>
+
+          <!-- Global Recording Event Minimap & Scrubber -->
+          <div class="minimap-strip" id="readerMinimapWrap" title="Click or drag to jump anywhere in the recording · Green = focal HFO, Red = multi-shaft burst" data-i18n-title="Click or drag to jump anywhere in the recording · Green = focal HFO, Red = multi-shaft burst">
+            <canvas id="readerMinimapCanvas"></canvas>
+            <span id="minimapReadout" class="minimap-readout mono-meta"></span>
+          </div>
+
+          <div id="selectionBar" class="selection-bar hidden">
+            <span id="selectionText"></span>
+            <div class="row-inline">
+              <button id="excludeSelectionBtn" class="btn btn-xs btn-accent" data-i18n="Exclude Globally">Exclude Globally</button>
+              <button id="excludeSelChBtn" class="btn btn-xs" data-i18n="Exclude Focus Ch">Exclude Focus Ch</button>
+              <button id="clipSelectionBtn" class="btn btn-xs" data-i18n="★ Clip to Sheet">★ Clip to Sheet</button>
+              <button id="clearSelectionBtn" class="btn btn-xs btn-ghost" data-i18n="Cancel">Cancel</button>
+            </div>
+          </div>
+
+          <!-- Upper Synchronized Multi-Channel SEEG Canvas -->
+          <div class="mc-canvas-wrap" id="mcCanvasWrap">
+            <canvas id="mcCanvas" class="tool-pan"></canvas>
+            <div id="mcReadoutHud" class="mc-readout-hud hidden"></div>
+            <div id="chMenu" class="ch-menu hidden">
+              <div id="chMenuTitle" class="ch-menu-title" data-i18n="Channel">Channel</div>
+              <button id="chHideBtn" data-i18n="Hide in Display">Hide in Display</button>
+              <button id="chBoostBtn" data-i18n="Toggle 2× Channel Gain">Toggle 2× Channel Gain</button>
+              <button id="chMarkBadBtn" class="danger" data-i18n="Mark Bad &amp; Re-Run Branch">Mark Bad &amp; Re-Run Branch</button>
+            </div>
+          </div>
+
+          <!-- Resizable Horizontal Split Divider -->
+          <div id="readerSplitter" class="reader-splitter" title="Drag up/down to resize Waveform vs Triad height · Double-click to reset" data-i18n-title="Drag up/down to resize Waveform vs Triad height · Double-click to reset">
+            <span class="splitter-grip" aria-hidden="true"></span>
+          </div>
+
+          <!-- Lower Candidate / Control Verification Dock -->
+          <div class="triad-dock" id="triadDock">
+            <div class="triad-left">
+              <div class="triad-bar">
+                <span id="triadHeaderText" data-i18n="Waveform and Morlet time-frequency plot">Waveform and Morlet time-frequency plot</span>
+                <div class="row-inline">
+                  <button id="sideBySideBtn" class="btn btn-xs" title="Lock Y-axis and compare Candidate vs same-channel Quiet Control [Key: S]" data-i18n-title="Lock Y-axis and compare Candidate vs same-channel Quiet Control [Key: S]" data-i18n="Side-by-Side Control">Side-by-Side Control</button>
+                  <button id="showControlBtn" class="btn btn-xs btn-ghost" title="Inspect a candidate-free quiet window on the same channel" data-i18n-title="Inspect a candidate-free quiet window on the same channel" data-i18n="Quiet Window">Quiet Window</button>
+                  <select id="triadWinSelect">
+                    <option value="0.4">400 ms</option>
+                    <option value="0.6" selected>600 ms</option>
+                    <option value="1.0">1.0 s</option>
+                  </select>
+                </div>
+              </div>
+              <div class="triad-canvas-wrap">
+                <canvas id="triadCanvas"></canvas>
+              </div>
+            </div>
+
+            <div class="verdict-panel">
+              <div class="row-between">
+                <span class="side-title" data-i18n="Clinician review">Clinician review</span>
+                <span id="syncClassBadge" class="sync-tag">—</span>
+              </div>
+              <div id="verdictEventMeta" class="verdict-meta" data-i18n="Select an event or control window">Select an event or control window</div>
+
+              <div class="verdict-grid">
+                <button id="vConfirmBtn" class="v-btn v-confirm" title="Key: 1" data-i18n-title="Key: 1">
+                  <span class="v-left"><span class="v-dot"></span><span data-i18n="Confirm">Confirm</span></span><kbd>1</kbd>
+                </button>
+                <button id="vArtifactBtn" class="v-btn v-artifact" title="Key: 2" data-i18n-title="Key: 2">
+                  <span class="v-left"><span class="v-dot"></span><span data-i18n="Artifact">Artifact</span></span><kbd>2</kbd>
+                </button>
+                <button id="vUncertainBtn" class="v-btn v-uncertain" title="Key: 3" data-i18n-title="Key: 3">
+                  <span class="v-left"><span class="v-dot"></span><span data-i18n="Uncertain">Uncertain</span></span><kbd>3</kbd>
+                </button>
+                <button id="vClipBtn" class="v-btn v-clip" title="Key: C" data-i18n-title="Key: C">
+                  <span class="v-left"><span class="v-dot"></span><span data-i18n="Clip ★">Clip ★</span></span><kbd>C</kbd>
+                </button>
+              </div>
+
+              <div class="row-between">
+                <button id="prevEvBtn" class="btn btn-xs btn-ghost" title="Key: ←" data-i18n-title="Key: ←" data-i18n="← Prev">← Prev</button>
+                <label class="chk-mini"><input id="autoNextChk" type="checkbox" checked /> <span data-i18n="Auto-next">Auto-next</span></label>
+                <button id="nextEvBtn" class="btn btn-xs btn-ghost" title="Key: →" data-i18n-title="Key: →" data-i18n="Next →">Next →</button>
+              </div>
+
+              <div class="author-box">
+                <textarea id="noteInput" rows="2" placeholder="Clinical observation note..." data-i18n-placeholder="Clinical observation note..."></textarea>
+                <button id="saveNoteOnlyBtn" class="btn btn-xs full-w" data-i18n="Save Observation">Save Observation</button>
+                <div class="reviewer-bar">
+                  <span id="reviewerSummaryText" class="hint" style="margin:0"><span data-i18n="Reviewer:">Reviewer:</span> <strong>clinician</strong> <span data-i18n="(Clinician)">(Clinician)</span></span>
+                  <button id="editReviewerBtn" type="button" class="btn btn-xs btn-ghost" style="padding:1px 6px;font-size:10.5px" data-i18n="Edit">Edit</button>
+                </div>
+                <div id="reviewerEditRow" class="row-inline hidden">
+                  <input id="authorInput" type="text" value="clinician" placeholder="Author" data-i18n-placeholder="Author" />
+                  <select id="authorRoleSelect">
+                    <option value="clinician" data-i18n="Clinician">Clinician</option>
+                    <option value="researcher" data-i18n="Researcher">Researcher</option>
+                    <option value="engineering_rehearsal" data-i18n="Rehearsal">Rehearsal</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 3: 3D ELECTRODE SHAFTS & CASE DISCUSSION SHEET -->
+    <section id="view-sheet" class="view-pane">
+      <div class="sheet-split">
+        <div class="spatial-pane">
+          <div class="card-head pad-bar">
+            <div>
+              <span class="card-title" data-i18n="3D SEEG Depth-Shaft Map">3D SEEG Depth-Shaft Map</span>
+              <span id="spatialBadge" class="hint"></span>
+            </div>
+            <button id="openOverlayBtn" class="btn btn-xs" title="Overlay external SOZ / Resected reference annotations" data-i18n-title="Overlay external SOZ / Resected reference annotations" data-i18n="SOZ Overlay">SOZ Overlay</button>
+          </div>
+          <div id="overlaySummaryBar" class="overlay-strip hidden"></div>
+          <div class="spatial-canvas-wrap">
+            <canvas id="spatialCanvas"></canvas>
+            <div class="spatial-float-bar">
+              <button data-rot="iso" class="active" data-i18n="3D Iso">3D Iso</button>
+              <button data-rot="axial" data-i18n="Axial">Axial</button>
+              <button data-rot="coronal" data-i18n="Coronal">Coronal</button>
+              <button data-rot="sagittal" data-i18n="Sagittal">Sagittal</button>
+            </div>
+            <div class="spatial-legend" data-i18n="Drag to orbit · Glow &amp; radius = Focal HFO Rate · Dashed rings = External SOZ/Resected · Click contact for waveforms">Drag to orbit · Glow &amp; radius = Focal HFO Rate · Dashed rings = External SOZ/Resected · Click contact for waveforms</div>
+          </div>
+        </div>
+
+        <div class="brief-pane">
+          <div class="card-head pad-bar">
+            <div class="row-inline" style="flex:1">
+              <span class="card-title" data-i18n="MDT Case Sheet">MDT Case Sheet</span>
+              <input id="questionInput" type="text" style="flex:1;max-width:250px" placeholder="Clinical discussion question..." data-i18n-placeholder="Clinical discussion question..." />
+            </div>
+            <div class="row-inline sheet-actions">
+              <label><input id="deidentifyExport" type="checkbox" /> <span data-i18n="De-identify for sharing">De-identify for sharing</span></label>
+              <input id="exportPseudonym" class="hidden" type="text" maxlength="64" placeholder="Pseudonym (optional)" aria-label="Export pseudonym (optional)" autocomplete="off" data-i18n-placeholder="Pseudonym (optional)" data-i18n-aria-label="Export pseudonym (optional)" />
+              <button id="exportBidsBtn" class="btn btn-xs" title="Export BIDS-compliant *_events.tsv + *_events.json" data-i18n-title="Export BIDS-compliant *_events.tsv + *_events.json">BIDS TSV</button>
+              <button id="exportSlidesBtn" class="btn btn-xs" title="Export MDT presentation" data-i18n-title="Export MDT presentation" data-i18n="MDT slides">MDT slides</button>
+              <button id="exportEdfBtn" class="btn btn-xs" title="Export this recording and its BrainLens annotations" data-i18n-title="Export this recording and its BrainLens annotations" data-i18n="Export EDF+ for EEG reader">Export EDF+ for EEG reader</button>
+              <button id="saveProtocolBtn" class="btn btn-xs" title="Save reusable group protocol (strips case exclusions)" data-i18n-title="Save reusable group protocol (strips case exclusions)" data-i18n="Protocol">Protocol</button>
+              <button id="openCohortBtn3" class="btn btn-xs" data-i18n="Cohort">Cohort</button>
+              <button id="rebuildSheetBtn" class="btn btn-xs btn-accent" data-i18n="Rebuild">Rebuild</button>
+              <a id="printSheetLink" href="#" target="_blank" class="btn btn-xs hidden" data-i18n="Print ↗">Print ↗</a>
+            </div>
+          </div>
+          <div id="exportDownloads" class="row-inline pad-bar hidden" aria-label="Export downloads" aria-live="polite" data-i18n-aria-label="Export downloads"></div>
+          <iframe id="sheetFrame" class="sheet-frame" title="Presurgical Case Discussion Sheet" data-i18n-title="Presurgical Case Discussion Sheet"></iframe>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Modal: Open Dataset -->
+  <div id="openModal" class="modal hidden">
+    <div class="modal-card">
+      <div class="row-between">
+        <h3 data-i18n="Open Patient Case or Dataset">Open Patient Case or Dataset</h3>
+        <button id="closeOpenModal" class="btn btn-xs btn-ghost">✕</button>
+      </div>
+      <p class="hint" style="margin:2px 0 8px 0"><span data-i18n="Discovered datasets in">Discovered datasets in</span> <code>inputs/</code> <span data-i18n="(source recordings are never modified):">(source recordings are never modified):</span></p>
+      <div id="availInputsBox" class="inputs-list"></div>
+      <div class="row-inline" style="margin-top:10px">
+        <input id="customPathInput" type="text" style="flex:1" placeholder="/path/to/folder or recording.edf" data-i18n-placeholder="/path/to/folder or recording.edf" />
+        <button id="browsePathBtn" class="btn btn-sm" data-i18n="Browse recording">Browse recording</button>
+        <button id="importPathBtn" class="btn btn-sm btn-accent" data-i18n="Analyze Case">Analyze Case</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Modify Analysis / Sensitivity Branch -->
+  <div id="branchModal" class="modal hidden">
+    <div class="modal-card">
+      <div class="row-between">
+        <h3 data-i18n="Create Sensitivity Branch">Create Sensitivity Branch</h3>
+        <button id="closeBranchModal" class="btn btn-xs btn-ghost">✕</button>
+      </div>
+      <p class="hint" style="margin:2px 0 6px 0"><span data-i18n="Runs asynchronously on">Runs asynchronously on</span> <strong id="branchTargetLabel"></strong> <span data-i18n="while keeping">while keeping</span> <code>baseline</code> <span data-i18n="intact. Unchanged stages are reused automatically.">intact. Unchanged stages are reused automatically.</span></p>
+      <div class="form-grid">
+        <label><span data-i18n="Branch Name (optional)">Branch Name (optional)</span>
+          <input id="brName" type="text" placeholder="auto (e.g. excl_0s_60s)" data-i18n-placeholder="auto (e.g. excl_0s_60s)" />
+        </label>
+        <label><span data-i18n="Apply Saved Protocol">Apply Saved Protocol</span>
+          <select id="brProtocol"><option value="" data-i18n="(Current / Standard SEEG)">(Current / Standard SEEG)</option></select>
+        </label>
+        <label><span data-i18n="Exclude Time Start (s)">Exclude Time Start (s)</span>
+          <input id="brExStart" type="number" step="1" placeholder="e.g. 0" data-i18n-placeholder="e.g. 0" />
+        </label>
+        <label><span data-i18n="Exclude Time End (s)">Exclude Time End (s)</span>
+          <input id="brExEnd" type="number" step="1" placeholder="e.g. 60" data-i18n-placeholder="e.g. 60" />
+        </label>
+        <label><span data-i18n="Exclude Channels (comma-sep)">Exclude Channels (comma-sep)</span>
+          <input id="brExCh" type="text" placeholder="e.g. LB2, EKG1" data-i18n-placeholder="e.g. LB2, EKG1" />
+        </label>
+        <label><span data-i18n="State / Sleep Marker Slice">State / Sleep Marker Slice</span>
+          <select id="brState"><option value="" data-i18n="(Full recording / All states)">(Full recording / All states)</option></select>
+        </label>
+        <label><span data-i18n="Pipeline Reference">Pipeline Reference</span>
+          <select id="brRefMode">
+            <option value="original" data-i18n="Preserve Acquired Reference">Preserve Acquired Reference</option>
+            <option value="bipolar" data-i18n="Bipolar (requires common/avg input)">Bipolar (requires common/avg input)</option>
+            <option value="average" data-i18n="Common Average (requires common/avg input)">Common Average (requires common/avg input)</option>
+          </select>
+        </label>
+        <label><span data-i18n="Detector &amp; RMS Threshold">Detector &amp; RMS Threshold</span>
+          <div class="row-inline">
+            <select id="brDetector" style="flex:1">
+              <option value="STE">STE (RMS)</option>
+              <option value="MNI">MNI</option>
+            </select>
+            <input id="brRms" type="number" step="0.5" placeholder="5.0" style="width:72px" />
+          </div>
+        </label>
+      </div>
+      <label class="chk-mini" style="margin:10px 0 4px 0">
+        <input id="brClassify" type="checkbox" /> <span data-i18n="Enable local PyHFO ONNX Models (artifact / spike / eHFO)">Enable local PyHFO ONNX Models (artifact / spike / eHFO)</span>
+      </label>
+      <div class="row-between" style="margin-top:10px">
+        <span class="hint" style="margin:0"><span data-i18n="Preset:">Preset:</span> <a href="#" id="presetEx60" data-i18n="Excl [0,60)s">Excl [0,60)s</a> · <a href="#" id="presetOnnx">ONNX</a> · <a href="#" id="presetRms6">STE rms=6</a></span>
+        <button id="submitBranchBtn" class="btn btn-sm btn-accent" data-i18n="Run Async Branch">Run Async Branch</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: External Clinical Annotation Overlay (SOZ / Resected) -->
+  <div id="overlayModal" class="modal hidden">
+    <div class="modal-card">
+      <div class="row-between">
+        <h3 data-i18n="External Clinical Reference Overlay (SOZ / Resected)">External Clinical Reference Overlay (SOZ / Resected)</h3>
+        <button id="closeOverlayModal" class="btn btn-xs btn-ghost">✕</button>
+      </div>
+      <p class="hint" style="margin:2px 0 6px 0" data-i18n="Import external clinical conference or dataset SOZ/resection labels for objective concordance comparison. Always attributed to its declared source; never inferred by BrainLens.">Import external clinical conference or dataset SOZ/resection labels for objective concordance comparison. Always attributed to its declared source; never inferred by BrainLens.</p>
+      <div class="form-grid">
+        <label style="grid-column: 1 / -1"><span data-i18n="Provenance Source Citation (required)">Provenance Source Citation (required)</span>
+          <input id="ovSourceInput" type="text" placeholder="e.g. Epilepsy surgery conference notes / published SOZ table" data-i18n-placeholder="e.g. Epilepsy surgery conference notes / published SOZ table" />
+        </label>
+        <label><span data-i18n="SOZ Channels (comma-sep)">SOZ Channels (comma-sep)</span>
+          <input id="ovSozInput" type="text" placeholder="e.g. LB9, LB10" data-i18n-placeholder="e.g. LB9, LB10" />
+        </label>
+        <label><span data-i18n="Resected Channels (comma-sep)">Resected Channels (comma-sep)</span>
+          <input id="ovResInput" type="text" placeholder="e.g. LB8, LB9, LB10" data-i18n-placeholder="e.g. LB8, LB9, LB10" />
+        </label>
+        <label style="grid-column: 1 / -1"><span data-i18n="Clinical Notes (optional)">Clinical Notes (optional)</span>
+          <input id="ovNotesInput" type="text" placeholder="Context or surgical outcome note" data-i18n-placeholder="Context or surgical outcome note" />
+        </label>
+      </div>
+      <div class="row-between" style="margin-top:12px">
+        <button id="clearOverlayBtn" class="btn btn-xs" data-i18n="Remove Overlay">Remove Overlay</button>
+        <button id="saveOverlayBtn" class="btn btn-sm btn-accent" data-i18n="Save &amp; Compute Concordance">Save &amp; Compute Concordance</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Multi-Patient Cohort Batch Runner -->
+  <div id="cohortModal" class="modal hidden">
+    <div class="modal-card" style="width:640px">
+      <div class="row-between">
+        <h3 data-i18n="Multi-Patient Cohort Batch Runner">Multi-Patient Cohort Batch Runner</h3>
+        <button id="closeCohortModal" class="btn btn-xs btn-ghost">✕</button>
+      </div>
+      <p class="hint" style="margin:2px 0 8px 0"><span data-i18n="Apply a reusable Group Protocol (patient-specific exclusions stripped) across multiple cases and export">Apply a reusable Group Protocol (patient-specific exclusions stripped) across multiple cases and export</span> <code>cohort_summary.csv</code> + <code>cohort_channels.csv</code>.</p>
+      <div class="form-grid">
+        <label><span data-i18n="Cohort Output Name">Cohort Output Name</span>
+          <input id="cohNameInput" type="text" placeholder="e.g. seeg_screening_batch" data-i18n-placeholder="e.g. seeg_screening_batch" />
+        </label>
+        <label><span data-i18n="Group Protocol">Group Protocol</span>
+          <select id="cohProtocolSelect"><option value="" data-i18n="(Default Modality Baseline)">(Default Modality Baseline)</option></select>
+        </label>
+      </div>
+      <div style="margin-top:10px">
+        <div class="hint" style="margin:0 0 5px 0" data-i18n="Select Cases to Include:">Select Cases to Include:</div>
+        <div id="cohCasesChecks" class="coh-checks"></div>
+      </div>
+      <div class="row-between" style="margin-top:10px">
+        <span class="hint" style="margin:0" data-i18n="Incompatible recordings are safely logged as skipped.">Incompatible recordings are safely logged as skipped.</span>
+        <button id="runCohortBtn" class="btn btn-sm btn-accent" data-i18n="Run Cohort Batch">Run Cohort Batch</button>
+      </div>
+      <div style="margin-top:14px; border-top:1px solid var(--border); padding-top:10px">
+        <span class="card-title" data-i18n="Saved Cohort Results">Saved Cohort Results</span>
+        <div id="savedCohortsBox" class="inputs-list" style="margin-top:6px; max-height:170px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Save Group Protocol (replaces native window.prompt) -->
+  <div id="protocolModal" class="modal hidden">
+    <div class="modal-card" style="width:440px">
+      <div class="row-between">
+        <h3 data-i18n="Save Reusable Group Protocol">Save Reusable Group Protocol</h3>
+        <button id="closeProtocolModal" class="btn btn-xs btn-ghost">✕</button>
+      </div>
+      <p class="hint" style="margin:2px 0 8px 0" data-i18n="Extracts detector, reference, band, and ONNX parameters from the active run while stripping patient-specific channel/time exclusions.">Extracts detector, reference, band, and ONNX parameters from the active run while stripping patient-specific channel/time exclusions.</p>
+      <div class="form-grid" style="grid-template-columns:1fr">
+        <label><span data-i18n="Protocol Name">Protocol Name</span>
+          <input id="protoNameInput" type="text" placeholder="e.g. SEEG_Bipolar_ONNX" data-i18n-placeholder="e.g. SEEG_Bipolar_ONNX" />
+        </label>
+        <label><span data-i18n="Description (optional)">Description (optional)</span>
+          <input id="protoDescInput" type="text" placeholder="e.g. 2000 Hz bipolar screening with 3-stage ONNX" data-i18n-placeholder="e.g. 2000 Hz bipolar screening with 3-stage ONNX" />
+        </label>
+      </div>
+      <div class="row-between" style="margin-top:12px">
+        <button id="cancelProtocolBtn" class="btn btn-xs btn-ghost" data-i18n="Cancel">Cancel</button>
+        <button id="confirmSaveProtocolBtn" class="btn btn-sm btn-accent" data-i18n="Save Protocol">Save Protocol</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating Non-Blocking Async Job Progress Bar -->
+  <div id="jobBar" class="job-bar hidden">
+    <div class="row-between">
+      <strong id="jobTitle" data-i18n="Running analysis...">Running analysis...</strong>
+      <span id="jobStagePct" class="mono-meta">0%</span>
+    </div>
+    <div class="job-track"><div id="jobFill" class="job-fill"></div></div>
+    <div id="jobDetail" class="hint" style="margin:4px 0 0 0"></div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+  <dialog id="screenCalibrationDialog" class="reader-dialog" aria-labelledby="calibrationTitle">
+    <h3 id="calibrationTitle" data-i18n="Calibrate screen">Calibrate screen</h3>
+    <p data-i18n="Measure the distance between the ends of the bar with a ruler.">Measure the distance between the ends of the bar with a ruler.</p>
+    <div id="calibrationRuler" aria-hidden="true"></div>
+    <form id="calibrationForm">
+      <label><span data-i18n="Measured length (mm)">Measured length (mm)</span> <input id="calibrationLengthMm" type="number" min="0" step="any" required /></label>
+      <div class="reader-dialog-actions">
+        <button type="button" id="resetCalibrationBtn" class="btn btn-xs" data-i18n="Use 96 dpi">Use 96 dpi</button>
+        <button type="button" id="cancelCalibrationBtn" class="btn btn-xs" data-i18n="Cancel">Cancel</button>
+        <button id="saveCalibrationBtn" class="btn btn-xs btn-accent" data-i18n="Save">Save</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog id="readerShortcutDialog" class="reader-dialog" aria-labelledby="readerShortcutTitle">
+    <h3 id="readerShortcutTitle" data-i18n="Reader shortcuts">Reader shortcuts</h3>
+    <dl class="reader-shortcuts">
+      <dt>PageUp / A / [</dt><dd data-i18n="Previous page">Previous page</dd>
+      <dt>PageDown / D / ]</dt><dd data-i18n="Next page">Next page</dd>
+      <dt>Home / End</dt><dd data-i18n="First / last window">First / last window</dd>
+      <dt>← / →</dt><dd data-i18n="Previous / next evidence">Previous / next evidence</dd>
+      <dt>↑ / ↓</dt><dd data-i18n="Scroll channels">Scroll channels</dd>
+      <dt>Shift + ↑ / ↓</dt><dd data-i18n="Change row height">Change row height</dd>
+      <dt>+ (=) / −</dt><dd data-i18n="Increase / decrease gain">Increase / decrease gain</dd>
+      <dt>1 / 2 / 3</dt><dd data-i18n="Confirm / artifact / uncertain">Confirm / artifact / uncertain</dd>
+      <dt>C</dt><dd data-i18n="Toggle clip">Toggle clip</dd>
+      <dt>S / F</dt><dd data-i18n="Side-by-side / triad dock">Side-by-side / triad dock</dd>
+      <dt>V / M / X</dt><dd data-i18n="Pan / measure / exclude">Pan / measure / exclude</dd>
+      <dt data-i18n="Ctrl or ⌘ + wheel">Ctrl or ⌘ + wheel</dt><dd data-i18n="Time zoom">Time zoom</dd>
+      <dt data-i18n="Alt + wheel">Alt + wheel</dt><dd data-i18n="Gain">Gain</dd>
+      <dt data-i18n="Shift + Alt + wheel">Shift + Alt + wheel</dt><dd data-i18n="Row height">Row height</dd>
+      <dt data-i18n="Wheel">Wheel</dt><dd data-i18n="Scroll channels, channel pages or time">Scroll channels, channel pages or time</dd>
+      <dt data-i18n="Shift + wheel">Shift + wheel</dt><dd data-i18n="Pan time">Pan time</dd>
+      <dt data-i18n="Shift + drag">Shift + drag</dt><dd data-i18n="Select interval">Select interval</dd>
+      <dt data-i18n="Ctrl or ⌘ + shaft click">Ctrl or ⌘ + shaft click</dt><dd data-i18n="Combine shafts">Combine shafts</dd>
+      <dt>? / Esc</dt><dd data-i18n="Show help / close">Show help / close</dd>
+    </dl>
+    <form method="dialog"><button class="btn btn-xs" data-i18n="Close">Close</button></form>
+  </dialog>
+  <template id="askAgentTemplate">
+    <form>
+      <input type="text" name="question" maxlength="1200" required autocomplete="off"
+             placeholder="Ask about this view…" aria-label="Question for the agent"
+             data-i18n-placeholder="Ask about this view…" data-i18n-aria-label="Question for the agent" />
+      <button class="btn btn-xs" type="submit" data-i18n="Ask agent" disabled>Ask agent</button>
+    </form>
+    <div role="status"></div>
+    <div class="ask-thread" aria-live="polite"></div>
+  </template>
+  <script src="/agent_questions.js"></script>
+  <script src="/i18n.js"></script>
+  <script src="/reader_scales.js"></script>
+  <script src="/evidence_map.js"></script>
+  <script src="/long_recordings.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>

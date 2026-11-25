@@ -1,0 +1,43 @@
+# Python & Packaging
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local virtual environments & bundled dev runtimes
+.venv/
+.venv-*/
+.releases/
+.deployment-checkpoints/
+
+# Local workspaces, generated reports & historical v1 outputs
+results/
+workbench_results/
+HUP134_conference_brief.html
+
+# Machine-specific MCP host configs & local agent workspace rules
+.mcp.json
+.codex/
+.zcode/
+.agents/
+.claude/
+AGENTS.md
+
+# Large public raw recordings & local templates (download from OpenNeuro ds004100 / ds003498)
+inputs/HUP134/*.edf
+inputs/HUP134/provenance/
+inputs/ZurichHFO/**/*.eeg
+templates/
+*.zip
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+
+# Launch video renders (published as release assets)
+docs/demo/*.mp4

@@ -1,0 +1,26 @@
+{
+  "downloaded": "2026-11-02",
+  "user_authorized": "sub-01 run-01 only",
+  "source": "https://s3.amazonaws.com/openneuro.org/ds003498/",
+  "verified": {
+    "md5_matches_published_git_annex_keys": [
+      "eeg",
+      "vhdr",
+      "vmrk"
+    ],
+    "sha256_matches_github_commit": [
+      "json",
+      "channels.tsv",
+      "events.tsv"
+    ]
+  },
+  "files_sha256": {
+    "sub-01_ses-interictalsleep_run-01_channels.tsv": "d3b06b7d520087ca6c87673b34877ccb15287c2a6969da234355cb7d3995cc64",
+    "sub-01_ses-interictalsleep_run-01_events.tsv": "0a27979119e0713e309c4a9fd1a724721f6aee2ffdf05e00b8f38d4c3b583400",
+    "sub-01_ses-interictalsleep_run-01_ieeg.eeg": "7a948caf94bac6842ad72fde995da7dbba0db5c57a2f331dfd424e4e4b6702a9",
+    "sub-01_ses-interictalsleep_run-01_ieeg.json": "828f989b28e0d87058346419a48c32b0005971fa2a9e737e6ea6109e43caf583",
+    "sub-01_ses-interictalsleep_run-01_ieeg.vhdr": "98833d07bde9a7df3bfe7b684d74b1d4c506dc4237fd46ed6b8ed55c8bceaf0c",
+    "sub-01_ses-interictalsleep_run-01_ieeg.vmrk": "f09761236ceef4591e85b4b6b603478a0e94e9cb7f4ea86287d92c2a8684ba4c"
+  },
+  "crcns_description": "https://crcns.org/files/data/ieeg-1/crcns_ieeg-1_data_description.pdf"
+}

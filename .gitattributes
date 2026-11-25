@@ -1,0 +1,2 @@
+# Track large raw EEG binary recordings (>100 MiB) via Git LFS on GitHub
+*.eeg filter=lfs diff=lfs merge=lfs -text

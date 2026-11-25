@@ -1,0 +1,36 @@
+# BrainLens single-user loopback Docker Compose definition.
+#
+# SECURITY MODEL:
+# - Publishes ONLY on host loopback (127.0.0.1:8765:8765).
+# - Do NOT publish on 0.0.0.0 or expose to a hospital LAN/WAN.
+# - Host and container ports MUST match: WorkbenchHTTPServer rejects requests
+#   whose Host header is not 127.0.0.1 / localhost / [::1] on the server port.
+
+services:
+  brainlens:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      args:
+        WITH_PYHFO: ${WITH_PYHFO:-0}
+    image: brainlens:1.0.0
+    container_name: brainlens-workbench
+    ports:
+      - "127.0.0.1:8765:8765"
+    environment:
+      BRAINLENS_WORKSPACE: /data/workbench_results
+      BRAINLENS_TRUST_DIR: /home/brainlens/.brainlens
+      BRAINLENS_NO_BROWSER: "1"
+    volumes:
+      - brainlens-data:/data
+      # Keep HMAC sheet trust store persistent AND outside /data/workbench_results.
+      - brainlens-trust:/home/brainlens/.brainlens
+      # Mount local clinical recordings read-only (override via BRAINLENS_RECORDINGS_DIR).
+      - ${BRAINLENS_RECORDINGS_DIR:-../inputs}:/recordings:ro
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+volumes:
+  brainlens-data:
+  brainlens-trust:

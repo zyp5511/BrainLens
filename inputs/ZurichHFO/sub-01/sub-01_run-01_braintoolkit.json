@@ -1,0 +1,42 @@
+{
+  "reference": "common",
+  "reference_description": "Source-cited: CRCNS ieeg-1 data description v0.71 states 'The iEEG was recorded against a common intracranial reference and then transformed to bipolar channels for further analysis.' The BIDS sidecar iEEGReference is n/a; the reference location is not stated.",
+  "line_freq": 50,
+  "markers": [
+    {
+      "start": 0,
+      "end": 300.0,
+      "label": "SWS",
+      "source": "https://crcns.org/files/data/ieeg-1/crcns_ieeg-1_data_description.pdf (each five-minute interval selected as interictal slow-wave sleep; scoring by scalp EEG, EOG, EMG and video) and https://raw.githubusercontent.com/OpenNeuroDatasets/ds003498/950e1dbfe4a065975c15a6742bb0576464f7c93b/sub-01/ses-interictalsleep/ieeg/sub-01_ses-interictalsleep_run-01_ieeg.json TaskDescription"
+    }
+  ],
+  "provenance": {
+    "dataset": {
+      "name": "interictal iEEG during slow-wave sleep with HFO markings (Zurich iEEG HFO Dataset)",
+      "public_url": "https://openneuro.org/datasets/ds003498/versions/1.0.1",
+      "DOI": "10.18112/openneuro.ds003498.v1.0.1",
+      "license": "CC0",
+      "pinned_git_commit": "950e1dbfe4a065975c15a6742bb0576464f7c93b",
+      "license_evidence_url": "https://raw.githubusercontent.com/OpenNeuroDatasets/ds003498/950e1dbfe4a065975c15a6742bb0576464f7c93b/dataset_description.json",
+      "original_dataset": "CRCNS ieeg-1, DOI 10.6080/K06Q1VD5",
+      "publication": "Fedele T et al. Sci Rep 2017;7:13836, doi:10.1038/s41598-017-13064-1"
+    },
+    "source_files": {
+      "sub-01_ses-interictalsleep_run-01_ieeg.vhdr": "98833d07bde9a7df3bfe7b684d74b1d4c506dc4237fd46ed6b8ed55c8bceaf0c",
+      "sub-01_ses-interictalsleep_run-01_ieeg.eeg": "7a948caf94bac6842ad72fde995da7dbba0db5c57a2f331dfd424e4e4b6702a9",
+      "sub-01_ses-interictalsleep_run-01_ieeg.vmrk": "f09761236ceef4591e85b4b6b603478a0e94e9cb7f4ea86287d92c2a8684ba4c"
+    },
+    "published_bipolar_pairs_file": "bipolar-pairs-from-published-events.json",
+    "limitations": [
+      "Channel types are published as ECOG in channels.tsv; the CRCNS description says strips, grids and depth electrodes were used. Electrode type/anatomy is not inferred from labels.",
+      "No electrode coordinates are published in this BIDS tree; no spatial map is possible from this source.",
+      "The vmrk stimulus markers and events.tsv rows are HFOs from the authors' automated detector (Burnos et al. 2016), not manual gold-standard markings and not BrainToolkit output.",
+      "Reference location is not stated; only the common-intracranial-reference statement is cited.",
+      "Participant sub-01: TLE, ILAE 1 per participants.tsv; outcome is not used for any inference here."
+    ]
+  },
+  "braintoolkit_input": {
+    "version": 1,
+    "recording_fingerprint": "d55b4a285b40bea1eec06d1b6df6c0598ab18508f5f11e1265ac595e6093eec0"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "brainlens": {
+      "command": "brainlens-mcp",
+      "args": [
+        "--workspace",
+        "./workbench_results"
+      ]
+    }
+  }
+}
